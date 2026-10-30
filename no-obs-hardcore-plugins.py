@@ -273,6 +273,9 @@ class MainWindow(QMainWindow):
         left_layout = QVBoxLayout(left_widget)
         left_layout.setContentsMargins(0, 0, 0, 0)
         left_layout.addWidget(QLabel("<b>Plugins disponibles</b>"))
+        self.lbl_path_available = QLabel("")
+        self.lbl_path_available.setStyleSheet("color: #888; font-style: italic; font-size: 11px;")
+        left_layout.addWidget(self.lbl_path_available)
         self.scroll_available = QScrollArea()
         self.scroll_available.setWidgetResizable(True)
         self.widget_available = QWidget()
@@ -287,6 +290,9 @@ class MainWindow(QMainWindow):
         right_layout = QVBoxLayout(right_widget)
         right_layout.setContentsMargins(0, 0, 0, 0)
         right_layout.addWidget(QLabel("<b>Plugins installés</b>"))
+        self.lbl_path_installed = QLabel("")
+        self.lbl_path_installed.setStyleSheet("color: #888; font-style: italic; font-size: 11px;")
+        right_layout.addWidget(self.lbl_path_installed)
         self.scroll_installed = QScrollArea()
         self.scroll_installed.setWidgetResizable(True)
         self.widget_installed = QWidget()
@@ -374,6 +380,8 @@ class MainWindow(QMainWindow):
 
         # ── Disponibles ──
         self._clear_layout(self.layout_available)
+        dirs_display = ", ".join(str(d) for d in [self.import_dir, self.script_dir] if d.is_dir())
+        self.lbl_path_available.setText(dirs_display or "(aucun)")
         found_any = False
         for directory in [self.import_dir, self.script_dir]:
             if not directory.is_dir():
@@ -398,6 +406,8 @@ class MainWindow(QMainWindow):
 
         # ── Installés ──
         self._clear_layout(self.layout_installed)
+        obs_display = ", ".join(str(p) for _, p in self.obs_dirs if p.is_dir())
+        self.lbl_path_installed.setText(obs_display or "(aucun)")
         found_installed = False
         for _, obs_dir in self.obs_dirs:
             if not obs_dir.is_dir():
