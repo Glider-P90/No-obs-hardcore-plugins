@@ -49,22 +49,22 @@ if sys.version_info < (3, 9): sys.exit("Python 3.9+ requis")
 
 OBS_PLUGIN_DIRS: dict[str, list[tuple[str, Path]]] = {
     "Linux": [
-        ("Debian/Ubuntu (system)", Path("/usr/share/obs/obs-plugins/")),
-        ("Debian/Ubuntu (lib64)", Path("/usr/lib/x86_64-linux-gnu/obs-plugins/")),
-        ("Debian/Ubuntu (local)", Path("/usr/local/lib/x86_64-linux-gnu/obs-plugins/")),
-        ("Arch (lib64)", Path("/usr/lib64/obs-plugins/")),
-        ("Build/Git (config)", Path.home() / ".config" / "obs-studio" / "plugins"),
-        ("Flatpak", Path.home() / ".var" / "app" / "com.obsproject.Studio" / "config" / "obs-studio" / "plugins"),
-        ("AppImage", Path.home() / ".local" / "share" / "obs" / "obs-plugins"),
+        ("Debian/Ubuntu (system)", Path("/usr/share/obs/obs-plugins/")), ### ici c'est pour la config type d'install officiel ou build
+        ("Debian/Ubuntu (lib64)", Path("/usr/lib/x86_64-linux-gnu/obs-plugins/")), ## ici ce sont les lib .so
+        ("Debian/Ubuntu (local)", Path("/usr/local/lib/x86_64-linux-gnu/obs-plugins/")), 
+        ("Arch (lib64)", Path("/usr/lib64/obs-plugins/")), ## un autre type d'install
+        ("Build/Git (config)", Path.home() / ".config" / "obs-studio" / "plugins"), ## seulement le type build
+        ("Flatpak", Path.home() / ".var" / "app" / "com.obsproject.Studio" / "config" / "obs-studio" / "plugins"), #seulement le type flapak
+        ("AppImage", Path.home() / ".local" / "share" / "obs" / "obs-plugins"), #seulement le type snap
     ],
-    "Windows": [
+    "Windows": [ #un seul type d'install
         ("Program Files (64)", Path("C:/Program Files/obs-studio/obs-plugins/")),
         ("Program Files (x86)", Path("C:/Program Files (x86)/obs-studio/obs-plugins/")),
         ("ProgramData", Path("C:/ProgramData/obs-studio/plugins/")),
         ("LOCALAPPDATA", Path(os.environ.get("LOCALAPPDATA", "C:/Users/Default/AppData/Local")) / "obs" / "obs-plugins"),
         ("APPDATA", Path(os.environ.get("APPDATA", "C:/Users/Default/AppData/Roaming")) / "obs" / "plugins"),
     ],
-    "Darwin": [
+    "Darwin": [ #un seul type d'install
         ("App Bundle", Path("/Applications/OBS.app/Contents/Resources/obs-plugins/")),
         ("Homebrew (Intel)", Path("/usr/local/lib/obs-plugins/")),
         ("Homebrew (ARM)", Path("/opt/homebrew/lib/obs-plugins/")),
