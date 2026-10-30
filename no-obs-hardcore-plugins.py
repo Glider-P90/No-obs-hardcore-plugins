@@ -1,182 +1,457 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+No-obs-hardcore-plugins — Gestionnaire de plugins & scripts pour OBS Studio.
 
-import sys, os, platform, pwd
+Version 1.0
+- Portable : Linux (Debian/Arch), macOS, Windows
+- Configuration du répertoire d'importation (plugins + scripts)
+- Liste des plugins/scripts disponibles avec bouton Installer
+- Section "Plugins installés" avec date et bouton Supprimer
+- Affiche le type d'installation OBS et l'affichage (X11/Wayland)
 
+Dépendance unique : PySide6 (Qt6).
+Lancement : python3 no-obs-hardcore-plugins.py
+"""
 
+from __future__ import annotations
+
+import getpass
+import os
+import platform
+import shutil
+import sys
+from datetime import datetime
 from pathlib import Path
 
 from PySide6.QtWidgets import (
     QApplication,
     QMainWindow,
-    QGraphicsScene,
-    QGraphicsSimpleTextItem,
-    QPushButton,
+    QWidget,
     QVBoxLayout,
     QHBoxLayout,
-    QWidget,
-    QCheckBox,
     QLabel,
-    QProgressBar,
-    QToolButton,
+    QLineEdit,
+    QPushButton,
+    QCheckBox,
+    QFileDialog,
+    QScrollArea,
+    QSplitter,
+    QFrame,
+    QSizePolicy,
 )
-from PySide6.QtGui import QIcon, QPixmap
+from PySide6.QtCore import Qt
+from PySide6.QtGui import QFont
 
-from PySide6.QtCore import Qt, QSize, QPointF, QDir, QObject, Signal, Slot
+# ─── Chemins OBS par plateforme ───────────────────────────────────────────────
 
-class Buffer:
+OBS_PLUGIN_DIRS: dict[str, list[tuple[str, Path]]] = {
+    "Linux": [
+        ("Debian/Ubuntu (system)", Path("/usr/share/obs/obs-plugins/")),
+        ("Debian/Ubuntu (lib64)", Path("/usr/lib/x86_64-linux-gnu/obs-plugins/")),
+        ("Debian/Ubuntu (local)", Path("/usr/local/lib/x86_64-linux-gnu/obs-plugins/")),
+        ("Arch (lib64)", Path("/usr/lib64/obs-plugins/")),
+        ("Build/Git (config)", Path.home() / ".config" / "obs-studio" / "plugins"),
+        ("Flatpak", Path.home() / ".var" / "app" / "com.obsproject.Studio" / "config" / "obs-studio" / "plugins"),
+        ("AppImage", Path.home() / ".local" / "share" / "obs" / "obs-plugins"),
+    ],
+    "Windows": [
+        ("Program Files (64)", Path("C:/Program Files/obs-studio/obs-plugins/")),
+        ("Program Files (x86)", Path("C:/Program Files (x86)/obs-studio/obs-plugins/")),
+        ("ProgramData", Path("C:/ProgramData/obs-studio/plugins/")),
+        ("LOCALAPPDATA", Path(os.environ.get("LOCALAPPDATA", "C:/Users/Default/AppData/Local")) / "obs" / "obs-plugins"),
+        ("APPDATA", Path(os.environ.get("APPDATA", "C:/Users/Default/AppData/Roaming")) / "obs" / "plugins"),
+    ],
+    "Darwin": [
+        ("App Bundle", Path("/Applications/OBS.app/Contents/Resources/obs-plugins/")),
+        ("Homebrew (Intel)", Path("/usr/local/lib/obs-plugins/")),
+        ("Homebrew (ARM)", Path("/opt/homebrew/lib/obs-plugins/")),
+        ("Application Support", Path.home() / "Library" / "Application Support" / "obs-studio" / "plugins"),
+        ("Local lib", Path.home() / ".local" / "lib" / "obs-plugins"),
+        ("Local share", Path.home() / ".local" / "share" / "obs" / "obs-plugins"),
+    ],
+}
 
-    def __init__(self, main:QVBoxLayout):
-        self.main = main
-        self.icones: list[QWidget] = []
+PLUGIN_EXTENSIONS = {".lua", ".py", ".zip", ".tar.gz"}
 
-    def load(self):
-        for icone in self.icones:
-            self.main.addWidget(icone)
 
-class Icones(Buffer):
-    
-    def __init__(self, main:QVBoxLayout):
-        super().__init__(main)
-        
-    def append(self, label="", path=Path(), posX=0, posY=0, width=0, height=0):
-        widget = QWidget()
-        icone = QLabel()
-        pixmap = QPixmap(path)
-        icone.setToolTip(label)
-        icone.setPixmap(pixmap.scaled(16, 16, Qt.KeepAspectRatio, Qt.SmoothTransformation))
-        widget.setLayout(QVBoxLayout())
-        widget.layout().addWidget(icone)
-        widget.setGeometry(200, 300, 64, 64)
-        self.icones.append(widget)
+# ─── Détections système ───────────────────────────────────────────────────────
 
-class PluginTool(QWidget):
+def detect_obs_install() -> list[tuple[str, Path]]:
+    """Retourne les répertoires OBS existants sur cette plateforme."""
+    system = platform.system()
+    if system == "Darwin":
+        system = "Darwin"
+    elif system == "Windows":
+        system = "Windows"
+    else:
+        system = "Linux"
+    detected = []
+    for label, path in OBS_PLUGIN_DIRS.get(system, []):
+        if path.is_dir():
+            detected.append((label, path))
+    return detected
 
-#    plugin_installed: list[] = ["switch.lua", "turcmuch.lua", "monzip.py",]
-#    plugin_available: list[] = ["switch.lua", "turcmuch.lua", "monzip.py", "entest.lua", "micro.py",]
 
-    def __init__(self):
-        super().__init__(self)
-        
-    
-class MenuItem(QPushButton):
-    
-    def __init__(self, index:int, label:str, path_obs:Path, path_plugins_available=Path.home() / "Downloads"):
-        super().__init__(label)
-        self.index = index
-        self.clicked.connect(self.activate_page)
-        self.path_obs = path_obs
-        self.path_plugins_available = path_plugins_available
-        self.path_plugins_installed = ""
-        if self.path_plugins_installed == "":
-            self.path_plugins_installed = path_plugins_available
-        
-        
-    def activate_page(self):
-        self.listPluginsDir(self.sender().path_obs)
-        self.listPluginsDir(self.sender().path_plugins_available)
-        self.listPluginsDir(self.sender().path_obs)
-        
-    def listPluginsDir(self, path:Path):
-        dir = QDir(path);
-        dir.setFilter(QDir.Dirs | QDir.NoDotAndDotDot)
-        dir.setNameFilters(["*"])
-        fileList = dir.entryList()
-        for string in fileList:
-            print("file:",string)
-        print("TERMINATED")
-        
-class NoobPlugins(QMainWindow):
-    
+def detect_display() -> str:
+    """Détecte X11 ou Wayland."""
+    return os.environ.get("XDG_SESSION_TYPE", "inconnu")
+
+
+def default_import_dir() -> Path:
+    """Répertoire d'importation par défaut."""
+    if platform.system() == "Darwin":
+        return Path.home() / "Downloads"
+    # Détection locale FR
+    if (Path.home() / "Téléchargements").is_dir():
+        return Path.home() / "Téléchargements"
+    return Path.home() / "Downloads"
+
+
+def is_plugin_file(path: Path) -> bool:
+    """Vérifie si un fichier est un plugin/script OBS."""
+    if path.name.endswith(".tar.gz"):
+        return True
+    return path.suffix.lower() in {".lua", ".py", ".zip"}
+
+
+# ─── Widget : Ligne plugin ────────────────────────────────────────────────────
+
+class PluginRow(QWidget):
+    """Une ligne dans la liste d'un plugin avec actions."""
+
+    def __init__(self, filename: str, filepath: Path, size: int,
+                 installed: bool = False, install_date: str = "",
+                 on_install=None, on_delete=None):
+        super().__init__()
+        self.filepath = filepath
+        self.on_install = on_install
+        self.on_delete = on_delete
+
+        layout = QHBoxLayout()
+        layout.setContentsMargins(4, 2, 4, 2)
+
+        # Nom
+        self.name_label = QLabel(filename)
+        self.name_label.setFont(QFont("Monospace", 9))
+        layout.addWidget(self.name_label)
+
+        # Taille
+        size_label = QLabel(f"({self._fmt_size(size)})")
+        size_label.setStyleSheet("color: gray;")
+        layout.addWidget(size_label)
+
+        # Statut
+        self.status_label = QLabel()
+        if installed:
+            self.status_label.setText(f"✓ Installé le {install_date}")
+            self.status_label.setStyleSheet("color: #2e7d32;")
+        else:
+            self.status_label.setText("✗ Non installé")
+            self.status_label.setStyleSheet("color: #c62828;")
+        layout.addWidget(self.status_label)
+
+        layout.addStretch()
+
+        # Bouton action
+        if not installed and on_install:
+            btn = QPushButton("Installer")
+            btn.setMaximumWidth(90)
+            btn.clicked.connect(lambda: self.on_install(self.filepath))
+            layout.addWidget(btn)
+        elif installed and on_delete:
+            btn = QPushButton("Supprimer")
+            btn.setMaximumWidth(90)
+            btn.setStyleSheet("background-color: #ffebee; color: #c62828;")
+            btn.clicked.connect(lambda: self.on_delete(self.filepath))
+            layout.addWidget(btn)
+
+        self.setLayout(layout)
+
+    @staticmethod
+    def _fmt_size(n: int) -> str:
+        if n < 1024:
+            return f"{n} o"
+        if n < 1024 * 1024:
+            return f"{n // 1024} Ko"
+        return f"{n / (1024*1024):.1f} Mo"
+
+
+# ─── Fenêtre principale ───────────────────────────────────────────────────────
+
+class MainWindow(QMainWindow):
+
     def __init__(self):
         super().__init__()
+        self.setWindowTitle("No-obs-hardcore-plugins v1.0")
+        self.resize(900, 650)
 
-        self.setWindowTitle("OBS Plugins Manager 1.0")
-        self.resize(800, 600)
-        self.main = QVBoxLayout()
-        self.plugins_installed = QVBoxLayout()
-        self.plugins_available = QVBoxLayout()
-        self.icones = Icones(self.main)
-        self.username = pwd.getpwuid(os.getuid())[0]
-        self.obs_plugins: dict[str, list[str, Path]] = {
-            "Linux": [
-                [ "Official Debian Package Archive:", Path("/usr/share/obs/obs-plugins/")],
-                [ "Debian: ",   Path("/usr/lib/x86_64-linux-gnu/obs-plugins/")],
-                [ "Debian: ",   Path("/usr/local/lib/x86_64-linux-gnu/obs-plugins/")],
-                [ "Arch: ",     Path("/usr/lib64/obs-plugins/")],
-                [ "Git: ",      Path.home() / "/.config/obs-studio/plugins/"],
-                [ "Flatpak: ",  Path.home() / "/.var/app/com.obsproject.Studio/config/obs-studio/plugins/"],
-                [ "AppImage: ", Path.home() / "/.local/share/obs/obs-plugins/"],
-            ],
-            "Windows": [
-                [ "system_64: ",  Path(f"C:/Program Files/obs-studio/obs-plugins/bit")],
-                [ "system_32: ",  Path(f"C:/Program Files (x86)/obs-studio/obs-plugins")],
-                [ "user_local: ", Path(f"C:/ProgramData/obs-studio/plugins")],
-                [ "user_local: ", Path(f"%LOCALAPPDATA%/obs/obs-plugins")],
-                [ "appdata: ",    Path(f"%APPDATA%/obs/plugins")],
-            ],
-            "Macos": [
-                [ "Mac-app_bundle: ", Path("/Applications/OBS.app/Contents/Resources/obs-plugins/")],
-                [ "Mac-brew_intel: ", Path("/usr/local/lib/obs-plugins/")],
-                [ "Mac-brew_arm: ",   Path("/opt/homebrew/lib/obs-plugins/")],
-                [ "Mac-3: ",          Path(r"~/Library/Application Support/obs-studio/plugins")],
-                [ "Mac-4: ",          Path(r"~/.local/lib/obs-plugins/")],
-                [ "Mac-5: ",          Path(r"~/.local/share/obs/obs-plugins/")],
-            ],
-        }
+        self.obs_dirs: list[tuple[str, Path]] = []
+        self.import_dir: Path = default_import_dir()
+        self.script_dir: Path = default_import_dir()
+        self.same_script_dir: bool = True
 
-        self.status: dict[str, list[str , Path]] = {
-            "alert":  [ "Attentions",   Path.home() / "Pictures/icone/no_obs-plugins/status-red-alert.png" ],
-            "red":    [ "Non installé", Path.home() / "Pictures/icone/no_obs-plugins/status-red-not.png" ],
-            "orange": [ "Cassé",        Path.home() / "Pictures/icone/no_obs-plugins/status-orange-not.png" ],
-            "blue":   [ "En attente",   Path.home() / "Pictures/icone/no_obs-plugins/status-blue-check.png" ],
-            "green":  [ "Installé",     Path.home() / "Pictures/icone/no_obs-plugins/status-green-check.png" ],
-        }
+        self._build_ui()
+        self._detect_system()
+        self._refresh_lists()
 
-        for status in self.status.values():
-            self.icones.append(status[0], str(status[1]))
+    # ── UI Construction ──────────────────────────────────────────────────────
 
-        widget_welcome = QLabel()
-        widget_welcome.setText("<u><strong>Système détecté "+platform.system()+":</strong></u> Bienvenue "+self.username+"!")
-        self.main.addWidget(widget_welcome)
-        self.installDetection()
+    def _build_ui(self):
+        central = QWidget()
+        main_layout = QVBoxLayout(central)
+        main_layout.setSpacing(8)
 
-    def installDetection(self):
-        items:list[str,Path]  = list()
-        
-        label = QLabel("Type d'installation:")
-        self.main.addWidget(label)
-        for os_key in self.obs_plugins.keys():
-            if os_key == platform.system():
-                for type_install, path_to_plugin in self.obs_plugins[os_key]:
-                    if path_to_plugin.is_dir():
-                        items.append([type_install, path_to_plugin])
+        # ── Section Système ──
+        sys_frame = QFrame()
+        sys_frame.setFrameShape(QFrame.StyledPanel)
+        sys_layout = QVBoxLayout(sys_frame)
+        sys_layout.setContentsMargins(8, 6, 8, 6)
 
-        self.menu_repo_type: list[MenuItem] = []
-        for label, path in items:
-            self.menu_repo_type.append(MenuItem(len(self.menu_repo_type), label, path))
+        self.lbl_system = QLabel("")
+        self.lbl_system.setStyleSheet("font-weight: bold;")
+        sys_layout.addWidget(self.lbl_system)
 
-    def setPage(self) -> QWidget:
-        widget_page = QWidget()
-        page_layout = QVBoxLayout()
-        page_layout.addWidget(QLabel("toto.lua"))
-        page_layout.addWidget(QLabel("toasdto.lua"))
-        page_layout.addWidget(QLabel("XXXXo.lua"))
-        page_layout.addWidget(QLabel("qwertyo.lua"))
-        page_layout.addWidget(QLabel("pagetoto.lua"))
-        page_layout.addWidget(QLabel("swipetoto.lua"))
-        page_layout.addWidget(QLabel("INFOtoto.lua"))
-        widget_page.setLayout(page_layout)
-        return widget_page
-        
-        
-    def display(self):
-        central_widget = QWidget()
-        for btn in self.menu_repo_type:
-            self.main.addWidget(btn)
-        central_widget.setLayout(self.main)
-        self.setCentralWidget(central_widget)        
-        self.show()
-        
-app = QApplication(sys.argv)
-window = NoobPlugins()
-window.display()
-app.exec()
+        self.lbl_obs = QLabel("")
+        sys_layout.addWidget(self.lbl_obs)
+
+        self.lbl_display = QLabel("")
+        sys_layout.addWidget(self.lbl_display)
+
+        main_layout.addWidget(sys_frame)
+
+        # ── Section Import ──
+        import_frame = QFrame()
+        import_frame.setFrameShape(QFrame.StyledPanel)
+        import_layout = QVBoxLayout(import_frame)
+        import_layout.setContentsMargins(8, 6, 8, 6)
+
+        # Plugins import dir
+        row1 = QHBoxLayout()
+        row1.addWidget(QLabel("Répertoire plugins :"))
+        self.edit_import = QLineEdit(str(self.import_dir))
+        self.edit_import.setReadOnly(False)
+        btn_browse = QPushButton("Parcourir…")
+        btn_browse.setMaximumWidth(100)
+        btn_browse.clicked.connect(self._browse_import)
+        row1.addWidget(self.edit_import, 1)
+        row1.addWidget(btn_browse)
+        import_layout.addLayout(row1)
+
+        # Same dir checkbox
+        self.chk_same = QCheckBox("Même chemin pour les scripts")
+        self.chk_same.setChecked(True)
+        self.chk_same.toggled.connect(self._toggle_script_dir)
+        import_layout.addWidget(self.chk_same)
+
+        # Scripts import dir (hidden by default)
+        self.row_scripts = QHBoxLayout()
+        self.row_scripts.addWidget(QLabel("Répertoire scripts :"))
+        self.edit_script = QLineEdit(str(self.script_dir))
+        btn_browse_s = QPushButton("Parcourir…")
+        btn_browse_s.setMaximumWidth(100)
+        btn_browse_s.clicked.connect(self._browse_script)
+        self.row_scripts.addWidget(self.edit_script, 1)
+        self.row_scripts.addWidget(btn_browse_s)
+        self.widget_script_row = QWidget()
+        self.widget_script_row.setLayout(self.row_scripts)
+        self.widget_script_row.hide()
+        import_layout.addWidget(self.widget_script_row)
+
+        btn_refresh = QPushButton("↻ Actualiser la liste")
+        btn_refresh.setMaximumWidth(180)
+        btn_refresh.clicked.connect(self._refresh_lists)
+        import_layout.addWidget(btn_refresh)
+
+        main_layout.addWidget(import_frame)
+
+        # ── Section Plugins (Splitter) ──
+        splitter = QSplitter(Qt.Horizontal)
+
+        # Colonne gauche : Disponibles
+        left_widget = QWidget()
+        left_layout = QVBoxLayout(left_widget)
+        left_layout.setContentsMargins(0, 0, 0, 0)
+        left_layout.addWidget(QLabel("<b>Plugins disponibles</b>"))
+        self.scroll_available = QScrollArea()
+        self.scroll_available.setWidgetResizable(True)
+        self.widget_available = QWidget()
+        self.layout_available = QVBoxLayout(self.widget_available)
+        self.layout_available.setContentsMargins(0, 0, 0, 0)
+        self.scroll_available.setWidget(self.widget_available)
+        left_layout.addWidget(self.scroll_available)
+        splitter.addWidget(left_widget)
+
+        # Colonne droite : Installés
+        right_widget = QWidget()
+        right_layout = QVBoxLayout(right_widget)
+        right_layout.setContentsMargins(0, 0, 0, 0)
+        right_layout.addWidget(QLabel("<b>Plugins installés</b>"))
+        self.scroll_installed = QScrollArea()
+        self.scroll_installed.setWidgetResizable(True)
+        self.widget_installed = QWidget()
+        self.layout_installed = QVBoxLayout(self.widget_installed)
+        self.layout_installed.setContentsMargins(0, 0, 0, 0)
+        self.scroll_installed.setWidget(self.widget_installed)
+        right_layout.addWidget(self.scroll_installed)
+        splitter.addWidget(right_widget)
+
+        main_layout.addWidget(splitter, 1)
+
+        # ── Barre bas : Exit ──
+        bottom = QHBoxLayout()
+        bottom.addStretch()
+        btn_exit = QPushButton("Quitter")
+        btn_exit.setMaximumWidth(100)
+        btn_exit.clicked.connect(self.close)
+        bottom.addWidget(btn_exit)
+        main_layout.addLayout(bottom)
+
+        self.setCentralWidget(central)
+
+    # ── Détection système ────────────────────────────────────────────────────
+
+    def _detect_system(self):
+        username = getpass.getuser()
+        sys_name = platform.system()
+        self.lbl_system.setText(
+            f"Système : {sys_name} {platform.release()} — Bienvenue {username}"
+        )
+
+        self.obs_dirs = detect_obs_install()
+        if self.obs_dirs:
+            labels = ", ".join(lbl for lbl, _ in self.obs_dirs)
+            self.lbl_obs.setText(f"OBS détecté : {labels}")
+        else:
+            self.lbl_obs.setText("⚠ Aucun répertoire OBS détecté sur ce système.")
+            self.lbl_obs.setStyleSheet("color: #c62828;")
+
+        display = detect_display()
+        self.lbl_display.setText(f"Affichage : {display}")
+
+    # ── Navigation dossiers ──────────────────────────────────────────────────
+
+    def _browse_import(self):
+        d = QFileDialog.getExistingDirectory(self, "Choisir le répertoire plugins")
+        if d:
+            self.edit_import.setText(d)
+            self.import_dir = Path(d)
+            if self.chk_same.isChecked():
+                self.edit_script.setText(d)
+                self.script_dir = Path(d)
+            self._refresh_lists()
+
+    def _browse_script(self):
+        d = QFileDialog.getExistingDirectory(self, "Choisir le répertoire scripts")
+        if d:
+            self.edit_script.setText(d)
+            self.script_dir = Path(d)
+            self._refresh_lists()
+
+    def _toggle_script_dir(self, checked: bool):
+        self.same_script_dir = checked
+        self.widget_script_row.setVisible(not checked)
+        if checked:
+            self.edit_script.setText(self.edit_import.text())
+            self.script_dir = Path(self.edit_import.text())
+        self._refresh_lists()
+
+    # ── Rafraîchissement des listes ─────────────────────────────────────────
+
+    def _clear_layout(self, layout):
+        while layout.count():
+            item = layout.takeAt(0)
+            w = item.widget()
+            if w:
+                w.deleteLater()
+
+    def _refresh_lists(self):
+        self.import_dir = Path(self.edit_import.text())
+        if not self.chk_same.isChecked():
+            self.script_dir = Path(self.edit_script.text())
+        else:
+            self.script_dir = self.import_dir
+
+        # ── Disponibles ──
+        self._clear_layout(self.layout_available)
+        found_any = False
+        for directory in [self.import_dir, self.script_dir]:
+            if not directory.is_dir():
+                continue
+            for f in sorted(directory.iterdir()):
+                if not f.is_file() or not is_plugin_file(f):
+                    continue
+                found_any = True
+                installed = self._is_installed(f.name)
+                row = PluginRow(
+                    filename=f.name,
+                    filepath=f,
+                    size=f.stat().st_size,
+                    installed=installed,
+                    on_install=None if installed else self._install_plugin,
+                )
+                self.layout_available.addWidget(row)
+        if not found_any:
+            lbl = QLabel("Aucun plugin/script trouvé dans le répertoire d'importation.")
+            lbl.setStyleSheet("color: gray; padding: 8px;")
+            self.layout_available.addWidget(lbl)
+
+        # ── Installés ──
+        self._clear_layout(self.layout_installed)
+        found_installed = False
+        for _, obs_dir in self.obs_dirs:
+            if not obs_dir.is_dir():
+                continue
+            for f in sorted(obs_dir.rglob("*")):
+                if not f.is_file() or not is_plugin_file(f):
+                    continue
+                found_installed = True
+                mtime = datetime.fromtimestamp(f.stat().st_mtime).strftime("%Y-%m-%d %H:%M")
+                row = PluginRow(
+                    filename=f.name,
+                    filepath=f,
+                    size=f.stat().st_size,
+                    installed=True,
+                    install_date=mtime,
+                    on_delete=self._delete_plugin,
+                )
+                self.layout_installed.addWidget(row)
+        if not found_installed:
+            lbl = QLabel("Aucun plugin installé détecté.")
+            lbl.setStyleSheet("color: gray; padding: 8px;")
+            self.layout_installed.addWidget(lbl)
+
+    # ── Actions ──────────────────────────────────────────────────────────────
+
+    def _is_installed(self, filename: str) -> bool:
+        for _, obs_dir in self.obs_dirs:
+            if (obs_dir / filename).exists():
+                return True
+        return False
+
+    def _install_plugin(self, filepath: Path):
+        if not self.obs_dirs:
+            self.lbl_obs.setText("⚠ Impossible : aucun répertoire OBS détecté.")
+            return
+        target_dir = self.obs_dirs[0][1]
+        try:
+            shutil.copy2(filepath, target_dir / filepath.name)
+            self._refresh_lists()
+        except Exception as e:
+            self.lbl_obs.setText(f"⚠ Erreur d'installation : {e}")
+
+    def _delete_plugin(self, filepath: Path):
+        try:
+            filepath.unlink()
+            self._refresh_lists()
+        except Exception as e:
+            self.lbl_obs.setText(f"⚠ Erreur de suppression : {e}")
+
+
+# ─── Point d'entrée ───────────────────────────────────────────────────────────
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    window = MainWindow()
+    window.show()
+    sys.exit(app.exec())
