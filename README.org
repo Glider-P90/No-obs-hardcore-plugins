@@ -1,1 +1,10 @@
-* Project: No-obs-hardcore-plugins
+#+AUTHOR: Pierre Étienne Charles Schebath CAZOULAT akka 
+ #+DATE: <2026-10-30 ven..>
+ #+EMAIL: pierre.schebath@lilo.org
+
+ :PROPERTIES:
+ :project-name: No-obs-hardcore-plugins
+ :github-project: [[https://github.com/Glider-P90/No-obs-hardcore-plugins][Retrouvez le projet sur GitHub]]
+ :project-version: 0.0
+ :END:
+
