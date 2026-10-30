@@ -265,41 +265,73 @@ class MainWindow(QMainWindow):
 
         main_layout.addWidget(import_frame)
 
-        # ── Section Plugins (Splitter) ──
+        # ── Section Plugins / Scripts (Splitter 2x2) ──
         splitter = QSplitter(Qt.Horizontal)
 
-        # Colonne gauche : Disponibles
+        # Colonne gauche : Plugins
         left_widget = QWidget()
         left_layout = QVBoxLayout(left_widget)
         left_layout.setContentsMargins(0, 0, 0, 0)
+
+        # Plugins disponibles
         left_layout.addWidget(QLabel("<b>Plugins disponibles</b>"))
-        self.lbl_path_available = QLabel("")
-        self.lbl_path_available.setStyleSheet("color: #888; font-style: italic; font-size: 11px;")
-        left_layout.addWidget(self.lbl_path_available)
-        self.scroll_available = QScrollArea()
-        self.scroll_available.setWidgetResizable(True)
-        self.widget_available = QWidget()
-        self.layout_available = QVBoxLayout(self.widget_available)
-        self.layout_available.setContentsMargins(0, 0, 0, 0)
-        self.scroll_available.setWidget(self.widget_available)
-        left_layout.addWidget(self.scroll_available)
+        self.lbl_path_plugins_avail = QLabel("")
+        self.lbl_path_plugins_avail.setStyleSheet("color: #888; font-style: italic; font-size: 11px;")
+        left_layout.addWidget(self.lbl_path_plugins_avail)
+        self.scroll_plugins_avail = QScrollArea()
+        self.scroll_plugins_avail.setWidgetResizable(True)
+        self.widget_plugins_avail = QWidget()
+        self.layout_plugins_avail = QVBoxLayout(self.widget_plugins_avail)
+        self.layout_plugins_avail.setContentsMargins(0, 0, 0, 0)
+        self.scroll_plugins_avail.setWidget(self.widget_plugins_avail)
+        left_layout.addWidget(self.scroll_plugins_avail, 1)
+
+        # Plugins installés
+        left_layout.addWidget(QLabel("<b>Plugins installés</b>"))
+        self.lbl_path_plugins_inst = QLabel("")
+        self.lbl_path_plugins_inst.setStyleSheet("color: #888; font-style: italic; font-size: 11px;")
+        left_layout.addWidget(self.lbl_path_plugins_inst)
+        self.scroll_plugins_inst = QScrollArea()
+        self.scroll_plugins_inst.setWidgetResizable(True)
+        self.widget_plugins_inst = QWidget()
+        self.layout_plugins_inst = QVBoxLayout(self.widget_plugins_inst)
+        self.layout_plugins_inst.setContentsMargins(0, 0, 0, 0)
+        self.scroll_plugins_inst.setWidget(self.widget_plugins_inst)
+        left_layout.addWidget(self.scroll_plugins_inst, 1)
+
         splitter.addWidget(left_widget)
 
-        # Colonne droite : Installés
+        # Colonne droite : Scripts
         right_widget = QWidget()
         right_layout = QVBoxLayout(right_widget)
         right_layout.setContentsMargins(0, 0, 0, 0)
-        right_layout.addWidget(QLabel("<b>Plugins installés</b>"))
-        self.lbl_path_installed = QLabel("")
-        self.lbl_path_installed.setStyleSheet("color: #888; font-style: italic; font-size: 11px;")
-        right_layout.addWidget(self.lbl_path_installed)
-        self.scroll_installed = QScrollArea()
-        self.scroll_installed.setWidgetResizable(True)
-        self.widget_installed = QWidget()
-        self.layout_installed = QVBoxLayout(self.widget_installed)
-        self.layout_installed.setContentsMargins(0, 0, 0, 0)
-        self.scroll_installed.setWidget(self.widget_installed)
-        right_layout.addWidget(self.scroll_installed)
+
+        # Scripts disponibles
+        right_layout.addWidget(QLabel("<b>Scripts disponibles</b>"))
+        self.lbl_path_scripts_avail = QLabel("")
+        self.lbl_path_scripts_avail.setStyleSheet("color: #888; font-style: italic; font-size: 11px;")
+        right_layout.addWidget(self.lbl_path_scripts_avail)
+        self.scroll_scripts_avail = QScrollArea()
+        self.scroll_scripts_avail.setWidgetResizable(True)
+        self.widget_scripts_avail = QWidget()
+        self.layout_scripts_avail = QVBoxLayout(self.widget_scripts_avail)
+        self.layout_scripts_avail.setContentsMargins(0, 0, 0, 0)
+        self.scroll_scripts_avail.setWidget(self.widget_scripts_avail)
+        right_layout.addWidget(self.scroll_scripts_avail, 1)
+
+        # Scripts installés
+        right_layout.addWidget(QLabel("<b>Scripts installés</b>"))
+        self.lbl_path_scripts_inst = QLabel("")
+        self.lbl_path_scripts_inst.setStyleSheet("color: #888; font-style: italic; font-size: 11px;")
+        right_layout.addWidget(self.lbl_path_scripts_inst)
+        self.scroll_scripts_inst = QScrollArea()
+        self.scroll_scripts_inst.setWidgetResizable(True)
+        self.widget_scripts_inst = QWidget()
+        self.layout_scripts_inst = QVBoxLayout(self.widget_scripts_inst)
+        self.layout_scripts_inst.setContentsMargins(0, 0, 0, 0)
+        self.scroll_scripts_inst.setWidget(self.widget_scripts_inst)
+        right_layout.addWidget(self.scroll_scripts_inst, 1)
+
         splitter.addWidget(right_widget)
 
         main_layout.addWidget(splitter, 1)
@@ -378,58 +410,78 @@ class MainWindow(QMainWindow):
         else:
             self.script_dir = self.import_dir
 
-        # ── Disponibles ──
-        self._clear_layout(self.layout_available)
-        dirs_display = ", ".join(str(d) for d in [self.import_dir, self.script_dir] if d.is_dir())
-        self.lbl_path_available.setText(dirs_display or "(aucun)")
-        found_any = False
-        for directory in [self.import_dir, self.script_dir]:
-            if not directory.is_dir():
-                continue
-            for f in sorted(directory.iterdir()):
-                if not f.is_file() or not is_plugin_file(f):
-                    continue
-                found_any = True
-                installed = self._is_installed(f.name)
-                row = PluginRow(
-                    filename=f.name,
-                    filepath=f,
-                    size=f.stat().st_size,
-                    installed=installed,
-                    on_install=None if installed else self._install_plugin,
-                )
-                self.layout_available.addWidget(row)
-        if not found_any:
-            lbl = QLabel("Aucun plugin/script trouvé dans le répertoire d'importation.")
-            lbl.setStyleSheet("color: gray; padding: 8px;")
-            self.layout_available.addWidget(lbl)
+        obs_display = ", ".join(str(p) for _, p in self.obs_dirs if p.is_dir()) or "(aucun)"
 
-        # ── Installés ──
-        self._clear_layout(self.layout_installed)
-        obs_display = ", ".join(str(p) for _, p in self.obs_dirs if p.is_dir())
-        self.lbl_path_installed.setText(obs_display or "(aucun)")
-        found_installed = False
+        # ── Plugins disponibles ──
+        self._clear_layout(self.layout_plugins_avail)
+        self.lbl_path_plugins_avail.setText(str(self.import_dir))
+        found = False
+        if self.import_dir.is_dir():
+            for f in sorted(self.import_dir.iterdir()):
+                if not f.is_file() or not is_plugin_file(f) or f.suffix == ".py":
+                    continue
+                found = True
+                installed = self._is_installed(f.name)
+                row = PluginRow(f.name, f, f.stat().st_size, installed,
+                                on_install=None if installed else self._install_plugin)
+                self.layout_plugins_avail.addWidget(row)
+        if not found:
+            self._add_empty(self.layout_plugins_avail, "Aucun plugin trouvé.")
+
+        # ── Scripts disponibles ──
+        self._clear_layout(self.layout_scripts_avail)
+        self.lbl_path_scripts_avail.setText(str(self.script_dir))
+        found = False
+        if self.script_dir.is_dir():
+            for f in sorted(self.script_dir.iterdir()):
+                if not f.is_file() or f.suffix != ".py":
+                    continue
+                found = True
+                installed = self._is_installed(f.name)
+                row = PluginRow(f.name, f, f.stat().st_size, installed,
+                                on_install=None if installed else self._install_plugin)
+                self.layout_scripts_avail.addWidget(row)
+        if not found:
+            self._add_empty(self.layout_scripts_avail, "Aucun script trouvé.")
+
+        # ── Plugins installés ──
+        self._clear_layout(self.layout_plugins_inst)
+        self.lbl_path_plugins_inst.setText(obs_display)
+        found = False
         for _, obs_dir in self.obs_dirs:
             if not obs_dir.is_dir():
                 continue
             for f in sorted(obs_dir.rglob("*")):
-                if not f.is_file() or not is_plugin_file(f):
+                if not f.is_file() or not is_plugin_file(f) or f.suffix == ".py":
                     continue
-                found_installed = True
+                found = True
                 mtime = datetime.fromtimestamp(f.stat().st_mtime).strftime("%Y-%m-%d %H:%M")
-                row = PluginRow(
-                    filename=f.name,
-                    filepath=f,
-                    size=f.stat().st_size,
-                    installed=True,
-                    install_date=mtime,
-                    on_delete=self._delete_plugin,
-                )
-                self.layout_installed.addWidget(row)
-        if not found_installed:
-            lbl = QLabel("Aucun plugin installé détecté.")
-            lbl.setStyleSheet("color: gray; padding: 8px;")
-            self.layout_installed.addWidget(lbl)
+                row = PluginRow(f.name, f, f.stat().st_size, True, mtime, on_delete=self._delete_plugin)
+                self.layout_plugins_inst.addWidget(row)
+        if not found:
+            self._add_empty(self.layout_plugins_inst, "Aucun plugin installé.")
+
+        # ── Scripts installés ──
+        self._clear_layout(self.layout_scripts_inst)
+        self.lbl_path_scripts_inst.setText(obs_display)
+        found = False
+        for _, obs_dir in self.obs_dirs:
+            if not obs_dir.is_dir():
+                continue
+            for f in sorted(obs_dir.rglob("*")):
+                if not f.is_file() or f.suffix != ".py":
+                    continue
+                found = True
+                mtime = datetime.fromtimestamp(f.stat().st_mtime).strftime("%Y-%m-%d %H:%M")
+                row = PluginRow(f.name, f, f.stat().st_size, True, mtime, on_delete=self._delete_plugin)
+                self.layout_scripts_inst.addWidget(row)
+        if not found:
+            self._add_empty(self.layout_scripts_inst, "Aucun script installé.")
+
+    def _add_empty(self, layout, text: str):
+        lbl = QLabel(text)
+        lbl.setStyleSheet("color: gray; padding: 8px;")
+        layout.addWidget(lbl)
 
     # ── Actions ──────────────────────────────────────────────────────────────
 
