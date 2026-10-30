@@ -11,8 +11,10 @@ Version 1.0
 - Affiche le type d'installation OBS et l'affichage (X11/Wayland)
 
 Dépendance unique : PySide6 (Qt6).
+Requires: Python >= 3.9
 Lancement : python3 no-obs-hardcore-plugins.py
 """
+if sys.version_info < (3, 9): sys.exit("Python 3.9+ requis")
 
 from __future__ import annotations
 

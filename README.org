@@ -10,12 +10,26 @@
 
 * No obs Hardcore Plugins
 
-Installation automatique de plugins et scripts pour OBS Studio.
-Multi-plateforme, non testé sous Windows et macOS.
+@@warning: Ce projet est en cours de développement!@@
 
-Merci de bien vouloir remonter toutes annomalies, permettant au projet d'évoler.
+Installation automatique de plugins et scripts pour OBS Studio quelque soit sa méthode d'installation, multi-plateforme.
+
+Merci de bien vouloir remonter toutes annomalies, permettant au projet d'évoluer.
 
 ** Requis:
-- Python >=3.0
+- Python >=3.9
+- PySide6>=6.5.0
+
+** Utilisation:
+
+#+BEGIN_EXAMPLE
+git clone https://github.com/Glider-P90/No-obs-hardcore-plugins.git
+cd No-obs-hardcore-plugins
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+./no-obs-hardcore-plugins.py
+#+END_EXAMPLE
+
 * Licence
 Gratuit. Utilisation commerciale interdite.

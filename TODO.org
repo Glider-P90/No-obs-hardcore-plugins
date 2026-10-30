@@ -9,23 +9,23 @@
  :END:
 
 * No obs Hardcore Plugins
-** Version 1.0 [0/5]:
+** Version 1.0 [3/9]:
 - [ ] Doit être portable:
   + [ ] Mac OS
   + [ ] Windows 10 / 11
   + [ ] Linux Arch / Debian
-- [ ] Permet de configurer un répertoire d'importation pour stocker les Plugins & Scripts:
-  + [ ] path par defautl Downloads/Téléchargers
-  + [ ] label + edit line + parcourir + ajouter
-  + [ ] Btn (switch) même path pour Script sinon: + label + edit line + parcourir + ajouter
+- [X] Permet de configurer un répertoire d'importation pour stocker les Plugins & Scripts:
+  + [X] path par defautl Downloads/Téléchargers
+  + [X] label + edit line + parcourir + ajouter
+  + [X] Btn (switch) même path pour Script sinon: + label + edit line + parcourir + ajouter
 - [ ] Affiche la liste des plugins et script reconnus dans le repertoire d'importation.
 - [ ] Affiche le système d'installation d'obs-studio (depot linux/build/flatpak/snap).
-- [ ] Affiche le système d'affichage d'obs-studio X11/Wayland.
+- [X] Affiche le système d'affichage d'obs-studio X11/Wayland.
 - [ ] Btn (installer) pour intaller à côté de chaque Plugins/Script du répertoire d'importation.
 - [ ] Label (date) date de l'intallation du Plugins/Script dans la partie plugins et scripts installé.
 - [ ] Btn (supprimer) à côté de chaque Plugins/Script dans la partie plugins et scripts installé.
-- [ ] Btn Exit/Quitter le programme.
+- [X] Btn Exit/Quitter le programme.
   
-** Version 2.0 [0/5]:
+** Version 2.0 [0/2]:
 - [ ] Dashboard pour importer des plugins et script depuis [[https://obsproject.com/forum/plugins/][obs project's plugins]].
 - [ ] Dashboard pour importer des plugins et script depuis [[https://github.com][Github]].
