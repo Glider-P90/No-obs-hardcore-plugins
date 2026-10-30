@@ -1,4 +1,4 @@
-#+AUTHOR: Pierre Étienne Charles Schebath CAZOULAT akka 
+#+AUTHOR: Pierre Étienne Charles Schebath CAZOULAT akka Peio
  #+DATE: <2026-10-30 ven..>
  #+EMAIL: pierre.schebath@lilo.org
 
@@ -8,3 +8,14 @@
  :project-version: 0.0
  :END:
 
+* No obs Hardcore Plugins
+
+Installation automatique de plugins et scripts pour OBS Studio.
+Multi-plateforme, non testé sous Windows et macOS.
+
+Merci de bien vouloir remonter toutes annomalies, permettant au projet d'évoler.
+
+** Requis:
+- Python >=3.0
+* Licence
+Gratuit. Utilisation commerciale interdite.

@@ -1,0 +1,31 @@
+##
+## ======================================================================
+## @license Copyright 2016-2019Pierre Schebath
+## ---------------------
+## @brief This file has been written by Pierre Schebath.
+## 
+## This source code, its related data and algorithms are Pierre Schebath
+## Proprietary Information and shall be protected in strict confidence by
+## the party who receives it. It shall not be disclosed nor copied nor
+## duplicated in whole or in part to any third party without Pierre Schebath
+## written prior permission.
+## ======================================================================
+## .gitignore for BM in  /Documents/Private/Projects/Beauty-Makeup
+## Pierre Schebath
+## 
+## Started on  Fri Jun 26 21:01:38 2020 @author glider
+Last update Sun Apr 19 13:33:26 2026 @author Glider
+## ======================================================================
+##
+
+# ignore all logs
+
+*.log
+*~
+\#*\#
+*.o
+.csswatcher
+.dir-locals-2.el
+.dir-locals.el
+.project
+.venv
