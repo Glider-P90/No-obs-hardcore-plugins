@@ -14,8 +14,6 @@ Dépendance unique : PySide6 (Qt6).
 Requires: Python >= 3.9
 Lancement : python3 no-obs-hardcore-plugins.py
 """
-if sys.version_info < (3, 9): sys.exit("Python 3.9+ requis")
-
 from __future__ import annotations
 
 import getpass
@@ -44,6 +42,8 @@ from PySide6.QtWidgets import (
 )
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QFont
+
+if sys.version_info < (3, 9): sys.exit("Python 3.9+ requis")
 
 # ─── Chemins OBS par plateforme ───────────────────────────────────────────────
 
